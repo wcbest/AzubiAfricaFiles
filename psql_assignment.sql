@@ -18,36 +18,14 @@ WHERE extract(YEAR FROM when_created) = 2018 -- extract() pulls the year from th
 GROUP BY extract(MONTH FROM when_created); -- extract() groups the results by month.
 
 --5. NUMBER OF AGENTS WHO WERE NET DEPOSITORS AND NET WITHDRAWERS IN THE PAST WEEK
-WITH agent_status AS (
-	SELECT count(agent_id) AS net_withdrawers FROM agent_transactions HAVING count(amount) IN (
-		SELECT count(amount) FROM agent_transactions WHERE amount>-1 AND amount!=0 HAVING count(amount)> (
-			SELECT count(amount) FROM agent_transactions WHERE amount<1 AND amount!=0))
-);
-			
-	SELECT count(agent_id) AS net_depositors FROM agent_transactions HAVING count(amount) IN (
-		SELECT count(amount) FROM agent_transactions WHERE amount>-1 AND amount!=0 HAVING count(amount) < (
-			SELECT count(amount) FROM agent_transactions WHERE amount<1 AND amount!=0)))
-
-SELECT * FROM agent_status;
-
 SELECT 
 sum(CASE WHEN amount>0 THEN amount ELSE 0 END) AS withdrawal, 
 sum(CASE WHEN amount<0 THEN amount ELSE 0 END) AS deposit, 
 CASE WHEN ((CASE WHEN amount>0 THEN amount ELSE 0 END) > (CASE WHEN amount<0 THEN amount ELSE 0 END) * -1) 
-THEN 'withdrawer' ELSE 'depositer' END AS agent_status, 
-count(*)FROM agent_transactions WHERE when_created BETWEEN (now() - '1 WEEK'::INTERVAL) AND now()
+THEN 'withdrawer' ELSE 'depositer' END AS agent_status
+FROM agent_transactions 
+WHERE when_created >= NOW() - INTERVAL '1 week'
 GROUP BY agent_transactions.amount;
-
-WITH agent_withdrawers AS(
-	SELECT count(agent_id) AS net_withdrawers FROM agent_transactions
- 	HAVING count(amount) IN (SELECT count(amount) FROM agent_transactions WHERE amount>-1 AND amount!=0 
-	HAVING count(amount)>(SELECT count(amount) FROM agent_transactions WHERE amount < 1 AND amount != 0)))
- ,agent_depositors AS(
-	 SELECT count(agent_id) AS net_depositors FROM agent_transactions 
-	HAVING count(amount) IN (SELECT count(amount) FROM agent_transactions WHERE amount>-1 AND amount!=0 
-	HAVING count(amount) < (SELECT count(amount) FROM agent_transactions WHERE amount<1 AND amount!=0)))
- 
- SELECT * FROM agent_withdrawers JOIN agent_depositors ON 
 
 --6. SUMMARY OF AGENT TRANSACTION VOLUME IN THE PAST WEEK, GROUPED BY CITY:
 SELECT agents.city AS City, count(agent_transactions.atx_id) AS Volume 
